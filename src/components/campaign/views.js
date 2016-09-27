@@ -2,6 +2,7 @@ const formatHelper = require('helpers/formatHelper');
 
 module.exports = { 
   list: Backbone.View.extend({
+    el: '#content',
     template: require('./templates/list.pug'),
     initialize(options) {
       this.collection = options.collection;
@@ -20,7 +21,7 @@ module.exports = {
           campaigns: this.collection.toJSON(),
           collection: this.collection,
         })
-        );
+      );
       this.$el.find('.selectpicker').selectpicker();
       //selectPicker('.selectpicker');
       return this;
@@ -39,12 +40,7 @@ module.exports = {
       'click .see-all-faq': 'seeAllFaq',
       'click .linkresponse': 'checkResponse',
       'submit .comment-form': 'submitComment',
-      // 'click .fancybox-nav': 'preventDefault'
     },
-    /*preventDefault(e) {
-      debugger
-      e.preventDefault();
-    },*/
     initialize(options) {
       $(document).off("scroll", this.onScrollListener);
       $(document).on("scroll", this.onScrollListener);
@@ -226,6 +222,7 @@ module.exports = {
       }, 100);
       this.$el.find('.perks .col-lg-4 p').equalHeights();
       this.$el.find('.team .auto-height').equalHeights();
+      this.$el.find('.card-inverse p').equalHeights();
       this.$el.find('.modal').on('hidden.bs.modal', function(event) {
         $(event.currentTarget).find('iframe').attr('src', $(event.currentTarget).find('iframe').attr('src'));
       });

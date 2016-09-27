@@ -1,11 +1,13 @@
 const dropzone = require('dropzone');
 const dropzoneHelpers = require('helpers/dropzone.js');
+const validation = require('components/validation/validation.js');
 
 module.exports = {
   profile: Backbone.View.extend({
     template: require('./templates/profile.pug'),
+    urlRoot: serverUrl + Urls.rest_user_details(),
     events: {
-      'submit form': api.submitAction,
+      'submit form': 'submit',
       'focus #ssn' : 'showSSNPopover',
       'focuseout #ssn' : 'hideSSNPopover',
       'keyup #zip_code': 'changeZipCode',
@@ -27,6 +29,7 @@ module.exports = {
 
       // define flag for the geocode function respond
       this.geocodeIsNotInProgress = true;
+      this.model.id = '';
     },
 
     render() {
@@ -36,7 +39,7 @@ module.exports = {
       this.$el.html(
         this.template({
           serverUrl: serverUrl,
-          user: app.user.toJSON(),
+          user: this.model,
           fields: this.fields,
           states: this.usaStates,
           dropzoneHelpers: dropzoneHelpers
@@ -53,12 +56,17 @@ module.exports = {
         'image', 
         'avatars', '', 
         (data) => {
-          this.model.save({
+          app.user.save({
             image: data.file_id,
           }, {
             patch: true
-          }).then((model) => {
-            console.log('image upload done', model);
+          }).then((data) => {
+            $('#user-thumbnail').attr(
+              'src', 
+              app.getThumbnail('55x55', data.image_data.thumbnails)
+            );
+            var r = _.extend(data, localStorage.getItem('user'));
+            localStorage.setItem('user', JSON.stringify(r));
           });
         }
       );
@@ -81,8 +89,41 @@ module.exports = {
       return this;
     },
 
-    getSuccessUrl(data) {
-      return '/account/profile';
+    submit(e) {
+
+      this.$el.find('.alert').remove();
+      e.preventDefault();
+
+      var data = data || $(e.target).serializeJSON();
+
+      let model = new Backbone.Model();
+      model.urlRoot = this.urlRoot;
+      model.set(data);
+      model.set('id', '');
+
+      if (model.isValid(true)) {
+        app.showLoading();
+        model.save().
+          then((data) => {
+            this.$el.find('.alert-warning').remove();
+            $('.popover').popover('hide');
+            $('#user_name').html(data.first_name + ' ' + data.last_name);
+
+            var r = _.extend(data, localStorage.getItem('user'));
+            localStorage.setItem('user', JSON.stringify(r));
+            //$('#content').scrollTo();
+            app.hideLoading();
+          }).
+          fail((xhr, status, text) => {
+            api.errorAction(this, xhr, status, text, this.fields);
+          });
+      } else {
+        if (this.$('.alert').length) {
+          $('#content').scrollTo();
+        } else {
+          this.$el.find('.has-error').scrollTo();
+        }
+      }
     },
 
     showSSNPopover(event){
@@ -107,37 +148,31 @@ module.exports = {
     },
 
     changeZipCode(e) {
-      if (!this.geocodeIsNotInProgress) return false;
+      // if not 5 digit, return
+      if (e.target.value.length < 5) return;
+      if (!e.target.value.match(/\d{5}/)) return;
+      this.getCityStateByZipCode(e.target.value, ({ success=false, city='', state='' }) => {
+        // this.zipCodeField.closest('div').find('.help-block').remove();
+        if (success) {
+          this.$('.js-city-state').text(`${city}, ${state}`);
+          // this.$('#city').val(city);
+          this.$('.js-city').val(city);
+          $('form input[name=city]').val(city);
+          // this.$('#state').val(city);
+          this.$('.js-state').val(state);
+          $('form input[name=state]').val(state);
 
-      clearTimeout(this.zipCodeTimeOut);
-      this.zipCodeTimeOut = setTimeout(() => {
-        this.geocodeIsNotInProgress = false;
-        this.getCityStateByZipCode(e.target.value, ({ success=false, city="", state="" }) => {
-          this.geocodeIsNotInProgress = true;
-          // clear error
-          this.zipCodeField.closest('div').find('.help-block').remove();
-
-                if (success) {
-                    if (!this.usaStates.find((el) => el.name == state)) {
-                        this.resetAddressValues();
-                        return false;
-                    }
-
-                    this.cityStateArea.text(`${city}/${state}`);
-                    this.cityField.val(city);
-                    this.stateField.val(state);
-                } else {
-                    this.resetAddressValues();
-                }
-            });
-        }, 200);
+        } else {
+          console.log('error');
+        }
+      });
     },
 
     resetAddressValues() {
       this.cityStateArea.text('City/State');
       this.cityField.val('');
       this.stateField.val('');
-      Backbone.Validation.callbacks.invalid(this, 'zip_code', 'Sorry your zip code is not found');
+      validation.invalidMsg(this, 'zip_code', 'Sorry your zip code is not found');
     },
 
     changeAddressManually() {
@@ -146,6 +181,13 @@ module.exports = {
   }),
 
   changePassword: Backbone.View.extend({
+    urlRoot: serverUrl + Urls.rest_password_change(),
+    events: {
+      'submit form': api.submitAction,
+    },
+    getSuccessUrl(data) {
+      return '/account/profile';
+    },
     render(){
       let template = require('./templates/changePassword.pug');
       this.$el.html(template({}));
@@ -154,13 +196,26 @@ module.exports = {
   }),
 
   setNewPassword: Backbone.View.extend({
+    urlRoot: serverUrl + Urls.rest_password_reset_confirm(),
     events: {
-        'form submit': api.submitAction,
+        'submit form': api.submitAction,
     },
 
+    getSuccessUrl(data) {
+      return '/account/profile';
+    },
+
+    /*_success(data) {
+      // Do the login in here too.
+    },*/
+
     render(){
+      const params = app.getParams();
       let template = require('./templates/setNewPassword.pug');
-      this.$el.html(template({}));
+      this.$el.html(template({
+        uid: params.uid,
+        token: params.token,
+      }));
       return this;
     },
   }),

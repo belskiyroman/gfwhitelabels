@@ -63,13 +63,16 @@ mixin fieldBlock(name, data, attr)
                         id=name
                         name=name
                     ).custom-select
+                        if attr.hasOwnProperty('empty')
+                            option(value=attr.empty.value) #{attr.empty.display}
+                          
                         each v in fields[name].choices
                             option(value=v.value selected=(v.value == values[name] ? "selected" : undefined)) #{v.display_name}
         else if attr.type == 'date' 
                 label(class= attr.text_align ? 'text-lg-' + attr.text_align + ' ' + attr.class1 : ' text-lg-right ' + attr.class1 for=name)= fields[name].label
                 div(class=attr.class2 id=name).date-input
                     - var data = values[name] ? values[name].split('-') : []
-                    .col-lg-4.no-gutter.p-l-0
+                    .col-lg-4.col-md-4.no-gutter.p-l-0.p-r-0
                         input(
                             id=name + '__month'
                             name=name + '__month'
@@ -78,7 +81,7 @@ mixin fieldBlock(name, data, attr)
                             maxlength=2
                             value=data[1]
                           ).form-control
-                    .col-lg-4.no-gutter.p-l-0.p-r-0
+                    .col-lg-4.col-md-4.no-gutter.p-l-0.p-r-0
                         input(
                             id=name + '__day'
                             name=name + '__day'
@@ -87,7 +90,7 @@ mixin fieldBlock(name, data, attr)
                             maxlength=2
                             value=data[2]
                           ).form-control
-                    .col-lg-4.no-gutter.p-r-0.p-l-0
+                    .col-lg-4.col-md-4.no-gutter.p-r-0.p-l-0
                         input(
                             id=name + '__year'
                             name=name + '__year'
@@ -121,17 +124,21 @@ mixin fieldBlock(name, data, attr)
                                 if k.type == 'text' 
                                     textarea(
                                         id=name + '_' + v
+                                        class=name + '_' + v + " form-control"
                                         name=name + '[' + indexCounter + '][' + v + ']'
                                         placeholder=k.placeholder ? k.placeholder : k.label
-                                      ).form-control #{k[counter]}
+                                        maxLength=k.maxLength ? k.maxLength : ''
+                                      ) #{k[counter]}
                                 else
                                     input(
                                         id=name + '_' + v
+                                        class=name + '_' + v + " form-control"
                                         name=name + '[' + indexCounter + '][' + v + ']'
                                         placeholder=k.placeholder ? k.placeholder : k.label
+                                        maxLength=k.maxLength ? k.maxLength : ''
                                         type=k.type
                                         value=k[counter]
-                                    ).form-control
+                                    )
                         - counter ++
                     - indexCounter ++
                 else
@@ -142,6 +149,7 @@ mixin fieldBlock(name, data, attr)
                         .delete-section-container
                             a(href="#" data-section=name data-index=indexCounter).delete-section
                                 i.fa.fa-times
+                        - console.log(fields[name].schema)
                         each k1,v in fields[name].schema
                             - var k = values[name][kkeys[counter]][v]
                             - var t = fields[name].schema[v]
@@ -151,17 +159,21 @@ mixin fieldBlock(name, data, attr)
                                     if t.type == 'text' 
                                         textarea(
                                             id=name + '_' + v
+                                            class=name + '_' + v + " form-control"
                                             name=name + '[' + indexCounter + '][' + v + ']'
                                             placeholder=t.placeholder ? t.placeholder : t.label
-                                          ).form-control #{k}
+                                            maxLength=t.maxLength ? t.maxLength : ''
+                                          ) #{k}
                                     else
                                         input(
                                             id=name + '_' + v
+                                            class=name + '_' + v + " form-control"
                                             name=name + '[' + indexCounter + '][' + v + ']'
                                             placeholder=t.placeholder ? t.placeholder : t.label
+                                            maxLength=t.maxLength ? t.maxLength : ''
                                             type=t.type
                                             value=k
-                                        ).form-control
+                                        )
                         - counter ++
                         - indexCounter ++
         else if attr.type == 'jsonVideo' 
@@ -184,6 +196,7 @@ mixin fieldBlock(name, data, attr)
                                             placeholder=t.placeholder ? t.placeholder : t.label
                                             type=t.type
                                             class=name + '_' + v + ' form-control'
+                                            data-index=indexCounter
                                         )
                         .col-lg-5.p-l-1.p-r-3.col-md-12.col-xs-12.p-sm-0 
                             .embed-responsive.embed-responsive-16by9 
@@ -211,6 +224,7 @@ mixin fieldBlock(name, data, attr)
                                                 type=t.type
                                                 value=k
                                                 class=name + '_' + v + ' form-control'
+                                                data-index=indexCounter
                                             )
                             .col-lg-5.p-l-1.p-r-3.col-md-12.col-xs-12.p-sm-0  
                                 .embed-responsive.embed-responsive-16by9 
@@ -282,6 +296,7 @@ mixin fieldDropzone(name, attr, type)
                         div.col-lg-7.col-md-7.col-sm-7.col-xs-7.p-r-0.p-l-3.img-dropzone
                             //- span
                             img(src=dropzoneHelpers.getDropzoneUrl(name, attr, values) alt=fields[name].label class="img-fluid  img-" + name)
+                            input(name=name id=name value=values[name] type="hidden")
 
 
     else if type == 2
@@ -306,6 +321,7 @@ mixin fieldDropzone(name, attr, type)
                             p.drop-photo #{attr.text}
                             i(class='fa fa-' + attr.icon)
                     .all-gallery(class=attr.class2 )
+                        input(name=name id=name value=values[name] type="hidden")
                         .photo-scroll(style="min-height:5rem;")
                             if values[name + '_data']
                                 each v,k in values[name+'_data'].all_files
@@ -313,16 +329,18 @@ mixin fieldDropzone(name, attr, type)
                                         .delete-image-container(style="position: absolute;")
                                             a(href="#" data-id=v.id).delete-image
                                                 i.fa.fa-times
-                                        img( src=v.url).img-fluid.pull-left
+                                        img(src=v.url).img-fluid.pull-left
     else if type == 3
       .drop-photo-block
         h3.widget-title.font-alt #{ attr.title }
-        div(class='dropzone__' + name)
-          img(src=attr.url)
-          .drop-image-title.text-xs-center 
-              span Drop your profile photo here or click to upload
-              div
-                  i.fa.fa-camera 
+
+        .border-dropzone
+            div(class='dropzone__' + name)
+              img(src=dropzoneHelpers.getDropzoneUrl(name, attr, values) alt=fields[name].label class="img-fluid m-x-auto  img-" + name)
+              .drop-image-title.text-xs-center.p-l-2.p-r-2 
+                span Drop your profile photo here or click to upload
+                    div
+                        i.fa.fa-camera 
 
 
 mixin fieldFileDropzone(name, attr, type)
@@ -348,8 +366,9 @@ mixin fieldFileDropzone(name, attr, type)
                             p.drop-photo #{attr.text}
                             i(class="fa fa-" + attr.icon)
                     div.col-lg-7.col-md-7.col-sm-7.col-xs-7.p-r-0.p-l-0.p-dropzone.img-dropzone.text-lg-center
+                        input(name=name id=name value=values[name] type="hidden")
                         img(src='/img/default' + suffix + '.png' alt=fields[name].label class="img-fluid  img-" + name)
                         if values[name+'_data']
-                          a(href=values[name+'_data'].url) #{ fileName }
+                          a(class=("a-" + name) href=values[name+'_data'].url) #{ fileName }
                         else
-                          a(href="")
+                          a(class=("a-" + name)  href="")
